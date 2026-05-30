@@ -1,0 +1,4 @@
+[gd_scene format=3 uid="uid://d28kf0o2v2h5t"]
+
+[node name="LineForGrid" type="Line2D" unique_id=569907194]
+width = 0.5
