@@ -1,9 +1,11 @@
 [gd_scene format=3 uid="uid://cp5l6vlqpw3hg"]
 
-[ext_resource type="Script" uid="uid://r2gvx1gw6jh7" path="res://Camera2d.cs" id="1_0xm2m"]
-[ext_resource type="PackedScene" uid="uid://bm54s4swcv6pf" path="res://grid.tscn" id="2_h2yge"]
+[ext_resource type="Script" uid="uid://r2gvx1gw6jh7" path="res://game/camera/Camera2d.cs" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://bx3jhqxh0a32q" path="res://game/main/Main.cs" id="1_h2yge"]
+[ext_resource type="PackedScene" uid="uid://bm54s4swcv6pf" path="res://game/grid/grid.tscn" id="2_h2yge"]
 
 [node name="Main" type="Node2D" unique_id=1967764640]
+script = ExtResource("1_h2yge")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1765001005]
 position = Vector2(-1, -1)
@@ -17,5 +19,5 @@ script = ExtResource("1_0xm2m")
 
 [node name="Grid" parent="." unique_id=354095554 instance=ExtResource("2_h2yge")]
 position = Vector2(-577, -325)
-NumberOfHorizontalLines = 100
-NumberOfVerticalLines = 80
+NumberOfHorizontalLines = 88
+NumberOfVerticalLines = 100

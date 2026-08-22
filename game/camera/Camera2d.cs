@@ -7,7 +7,13 @@ public partial class Camera2d : Camera2D
 
 	[Export]
 	public float maxZoom = 25;
-	bool isDragging = false;
+
+	[Export]
+	public bool canMove = true;
+
+	[Export]
+	public bool isDragging = false;
+	
 	Vector2 lastMousePos;
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready()
@@ -21,6 +27,10 @@ public partial class Camera2d : Camera2D
 
     public override void _Input(InputEvent @event)
     {
+		if (!canMove)
+		{
+			return;
+		}
         if (@event is InputEventMouseButton inputEventMouseButton)
 		{
 			if (inputEventMouseButton.ButtonIndex == MouseButton.Left && inputEventMouseButton.Pressed)
