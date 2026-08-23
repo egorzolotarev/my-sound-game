@@ -5,6 +5,12 @@ public partial class GridBlock: IBlock
 	[Signal]
 	public delegate void StopDraggingEventHandler(GridBlock sender);
 
+	[Signal]
+	public delegate void RightMousePressedEventHandler(GridBlock sender);
+
+	[Signal]
+	public delegate void DraggingEventHandler(GridBlock sender);
+
     public bool isDragging = false;
 	public Vector2 dragOffset;
     public override void _Ready()
@@ -29,6 +35,11 @@ public partial class GridBlock: IBlock
 				EmitSignal(SignalName.StopDragging, this);
 				AcceptEvent();
 			}
+			// Обработака нажатия правой кнопки мыши
+			if (inputEventMouseButton.ButtonIndex == MouseButton.Right && inputEventMouseButton.Pressed)
+			{
+				EmitSignal(SignalName.RightMousePressed, this);
+			}
 		}
     }
 
@@ -39,6 +50,7 @@ public partial class GridBlock: IBlock
 			if (isDragging)
 			{
 				GlobalPosition = GetGlobalMousePosition() - dragOffset;
+				EmitSignal(SignalName.Dragging, this);
 			}
 		}
 	}
