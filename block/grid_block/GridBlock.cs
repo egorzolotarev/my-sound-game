@@ -3,6 +3,9 @@ using Godot;
 public partial class GridBlock: IBlock
 {
 	[Signal]
+	public delegate void StartDraggingEventHandler(GridBlock sender);
+
+	[Signal]
 	public delegate void StopDraggingEventHandler(GridBlock sender);
 
 	[Signal]
@@ -11,8 +14,19 @@ public partial class GridBlock: IBlock
 	[Signal]
 	public delegate void DraggingEventHandler(GridBlock sender);
 
+	[Signal]
+	public delegate void LeftClickEventHandler(GridBlock sender);
+
     public bool isDragging = false;
 	public Vector2 dragOffset;
+
+	// Для определения клик или зажатие
+	private bool isClick = false;
+	private Vector2 blockStartPosition;
+	private ulong startBlockTime;
+	private const float MaxClickDistance = 5.0f;
+	private const ulong MaxClickTime = 300;
+
     public override void _Ready()
 	{
 		base._Ready();
@@ -25,14 +39,36 @@ public partial class GridBlock: IBlock
 			if (inputEventMouseButton.ButtonIndex == MouseButton.Left && inputEventMouseButton.Pressed)
 			{
 				isDragging = true;
+				isClick = true;
+				startBlockTime = Time.GetTicksMsec();
+				EmitSignal(SignalName.StartDragging, this);
 				dragOffset = GetGlobalMousePosition() - GlobalPosition;
+				blockStartPosition = GlobalPosition;
 				AcceptEvent();
 			}
 			if (inputEventMouseButton.ButtonIndex == MouseButton.Left && !inputEventMouseButton.Pressed)
 			{
-				GD.Print("Остановился, отправляю сигнал");
 				isDragging = false;
 				EmitSignal(SignalName.StopDragging, this);
+
+				float distance = blockStartPosition.DistanceTo(GlobalPosition);
+				if (distance > MaxClickDistance)
+				{
+					isClick = false;
+				}
+
+				ulong holdDuration = Time.GetTicksMsec() - startBlockTime;
+				if (holdDuration > MaxClickTime)
+				{
+					isClick = false;
+				}
+
+				if (isClick)
+				{
+					isClick = false;
+					EmitSignal(SignalName.LeftClick, this);
+				}
+
 				AcceptEvent();
 			}
 			// Обработака нажатия правой кнопки мыши

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using Godot;
 public partial class Main : Node2D
 {
@@ -10,6 +11,9 @@ public partial class Main : Node2D
 	private Line2D connectionLine;
 	// Структура данных для хранения связанных блоков и прикрепленных к ним линий
 	private Dictionary<GridBlock, List<Tuple<GridBlock, Line2D, string>>> blockConnections;
+
+	// Начальные координаты перетаскиваемого блока, если место на которое его переносят уже занято
+	private Vector2 blockStartPosition;
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready()
 	{
@@ -34,12 +38,23 @@ public partial class Main : Node2D
 		block.StopDragging += GridBlockStopDragging;
 		block.RightMousePressed += GridBlockRightMousePressed;
 		block.Dragging += GridBlockDragging;
+		block.StartDragging += GridBlockStartDragging;
+		block.LeftClick += GridBlockLeftClick;
+	}
+
+	private void GridBlockLeftClick(GridBlock sender)
+	{
+		GD.Print("Just click!");
+	}
+
+	private void GridBlockStartDragging(GridBlock sender)
+	{
+		blockStartPosition = sender.Position;	
 	}
 
 	// Когда блок перетаскивается, линия должна следовать за ним
  	private void GridBlockDragging(GridBlock sender)
 	{
-		GD.Print(blockConnections.Count);
 		foreach (Tuple<GridBlock, Line2D, string> node in blockConnections[sender])
 		{
 			var (_, line, str) = node;
@@ -61,6 +76,7 @@ public partial class Main : Node2D
 		Grid grid = (Grid)GetNode<Node2D>("Grid");
 		// Расстояние от координат центра блока до края сетки
 		Vector2 distances = new Vector2(sender.Position.X + sender.Size.X/2, sender.Position.Y + sender.Size.X/2);
+		//GD.Print("Координаты центра: ", distances.X, " ", distances.Y);
 
 		// Вычисляем длину одного деления сетки
 		float XLenght = grid.GetViewportRect().Size.X / (grid.NumberOfVerticalLines + 1);
@@ -71,12 +87,23 @@ public partial class Main : Node2D
 		float XRight = ((int)(distances.X / XLenght) + 1) * XLenght;
 		float YLeft = (int)(distances.Y / YLenght) * YLenght;
 		float YRight = ((int)(distances.Y / YLenght) + 1) * YLenght;
+		// GD.Print("Координаты ближайших точек: ");
+		// GD.Print("XLeft: ", XLeft);
+		// GD.Print("XRight: ", XRight);
+		// GD.Print("YLeft: ", YLeft);
+		// GD.Print("YRight: ", YRight);
 
-		// Вычисляем растояния до координат, из которых можно получить ближайшие 4 точки поля, в квадрате из которых находится блок
+		// Вычисляем расстояния до координат, из которых можно получить ближайшие 4 точки поля, в квадрате из которых находится блок
 		float XLeftDistance = distances.X - XLeft;
 		float XRightDistance = XRight - distances.X;
 		float YLeftDistance = distances.Y - YLeft;
 		float YRightDistance = YRight - distances.Y;
+
+		// GD.Print("Расстояния до координат ближайших точек: ");
+		// GD.Print("XLeft: ", XLeftDistance);
+		// GD.Print("XRight: ", XRightDistance);
+		// GD.Print("YLeft: ", YLeftDistance);
+		// GD.Print("YRight: ", YRightDistance);
 
 		Vector2 newPosition;
 		if (XLeftDistance < XRightDistance)
@@ -99,6 +126,17 @@ public partial class Main : Node2D
 		// Подгоняем центр блока к точке
 		newPosition.X -= sender.Size.X/2;
 		newPosition.Y -= sender.Size.Y/2;
+
+		// Если место уже занято, отправляем блок обратно
+		GridBlock isBlockOnPosition = GetBlockUnderPosition(newPosition);
+		if (isBlockOnPosition != null)
+		{
+			sender.Position = blockStartPosition;
+			GridBlockDragging(sender);
+			return;
+		}
+
+		//GD.Print("Новая позиция: ", newPosition.X, " ", newPosition.Y);
 
 		sender.Position = newPosition;
 
@@ -151,7 +189,7 @@ public partial class Main : Node2D
 		{
 			if (child is GridBlock block)
 			{
-				Rect2 rect = new Rect2(block.GlobalPosition, block.Size);
+				Rect2 rect = new Rect2(block.Position, block.Size);
 				if (rect.HasPoint(pos))
 				{
 					return block;
