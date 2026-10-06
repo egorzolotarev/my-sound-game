@@ -3,6 +3,9 @@ using System;
 
 public partial class IBlock : TextureRect
 {
+	[Signal]
+	public delegate void LeftClickEventHandler(IBlock sender);
+
 	[Export]
 	public AudioStream sound { get; set; }
 	public AudioStreamPlayer player {get; set; }

@@ -1,9 +1,12 @@
 using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Xml.Serialization;
 using Godot;
 public partial class Main : Node2D
 {
+	[Export]
+	public float speed = 0.03f;
 	private bool is_block_drugging = false;
 	private bool isLineConnecting = false;
 	//Блок, из которого исходит линия
@@ -28,6 +31,16 @@ public partial class Main : Node2D
 		block1.Position = new Vector2(557, 350);
 			
 		AddGridBlock(block1);
+
+		GridBlock block2 = (GridBlock)(ResourceLoader.Load<PackedScene>("res://block//grid_block//grid_block.tscn").Instantiate());
+		block2.Position = new Vector2(587, 350);
+			
+		AddGridBlock(block2);
+
+		GridBlock block3 = (GridBlock)(ResourceLoader.Load<PackedScene>("res://block//grid_block//grid_block.tscn").Instantiate());
+		block3.Position = new Vector2(607, 350);
+			
+		AddGridBlock(block3);
 	}
 
 	public void AddGridBlock(GridBlock block)
@@ -42,14 +55,43 @@ public partial class Main : Node2D
 		block.LeftClick += GridBlockLeftClick;
 	}
 
-	private void GridBlockLeftClick(GridBlock sender)
+	private void GridBlockLeftClick(IBlock sender)
 	{
-		GD.Print("Just click!");
+		if (sender is GridBlock gridBlock)
+		{
+			SendSound(gridBlock);
+		}
 	}
+
+	// Отправка звука связанным блокам
+	private void SendSound(GridBlock sender)
+	{
+		sender.PlaySound();
+		
+		foreach (Tuple<GridBlock, Line2D, string> connection in blockConnections[sender])
+		{
+			if (connection.Item3 == "to")
+			{
+				Line2D line = connection.Item2;
+				_ = SendSoundToLines(connection.Item1, line.Points[0].DistanceTo(line.Points[1]));
+			}
+		}
+	}
+
+	// Асинхронный метод, доставляющи звук к блоку и запускающий цепочку уже от него
+	private async Task SendSoundToLines(GridBlock recipient, float distance)
+	{
+		float time = distance * speed;
+		GD.Print(time);
+		await ToSignal(GetTree().CreateTimer(time), SceneTreeTimer.SignalName.Timeout);
+		recipient.EmitSignal(GridBlock.SignalName.LeftClick, recipient);
+	}
+
+
 
 	private void GridBlockStartDragging(GridBlock sender)
 	{
-		blockStartPosition = sender.Position;	
+		blockStartPosition = sender.Position;
 	}
 
 	// Когда блок перетаскивается, линия должна следовать за ним
@@ -218,12 +260,24 @@ public partial class Main : Node2D
 				// Смотрим, остановилось ли создание линии между блоками на блоке, и если да, то создаем ее
 				if (isLineConnecting)
 				{
+					GD.Print("isLineConnecting");
 					isLineConnecting = false;
-					GridBlock toBlock = GetBlockUnderPosition(GetGlobalMousePosition());
+
+					Grid grid = (Grid)GetNode<Node2D>("Grid");
+					GridBlock toBlock = GetBlockUnderPosition(grid.GetLocalMousePosition());
 
 					// Если линию отпустили на пустом месте, то удаляем ее
+					if (toBlock == null)
+					{
+						GD.Print("toBlock == null");
+					}
+					if (toBlock == lineSenderBlock)
+					{
+						GD.Print("toBlock == lineSenderBlock");
+					}
 					if (toBlock == null || toBlock == lineSenderBlock)
 					{
+						GD.Print("isLineConnecting линия удаляется");
 						lineSenderBlock = null;
 
 						RemoveChild(connectionLine);
@@ -233,6 +287,7 @@ public partial class Main : Node2D
 					// Иначе создаем линию
 					else
 					{
+						GD.Print("isLineConnecting линия создается");
 						connectionLine.SetPointPosition(1, connectionLine.ToLocal(toBlock.GlobalPosition + toBlock.Size/2));
 
 						if (!blockConnections.ContainsKey(lineSenderBlock))

@@ -14,9 +14,6 @@ public partial class GridBlock: IBlock
 	[Signal]
 	public delegate void DraggingEventHandler(GridBlock sender);
 
-	[Signal]
-	public delegate void LeftClickEventHandler(GridBlock sender);
-
     public bool isDragging = false;
 	public Vector2 dragOffset;
 
