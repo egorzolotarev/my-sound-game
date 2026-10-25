@@ -22,6 +22,11 @@ public partial class Main : Node2D
 	{
 		blockConnections = new Dictionary<GridBlock, List<Tuple<GridBlock, Line2D, string>>>();
 
+		StartBlock start = (StartBlock)(ResourceLoader.Load<PackedScene>("res://block//start_block//start_block.tscn").Instantiate());
+		start.Position = new Vector2(517, 350);
+			
+		AddGridBlock(start);
+
 		GridBlock block = (GridBlock)(ResourceLoader.Load<PackedScene>("res://block//grid_block//grid_block.tscn").Instantiate());
 		block.Position = new Vector2(537, 350);
 			
@@ -57,17 +62,19 @@ public partial class Main : Node2D
 
 	private void GridBlockLeftClick(IBlock sender)
 	{
-		if (sender is GridBlock gridBlock)
+		if (sender is StartBlock startBlock)
 		{
-			SendSound(gridBlock);
+			_ = SendSound(startBlock);
+		}
+		else if (sender is GridBlock gridBlock)
+		{
+			gridBlock.PlaySound();
 		}
 	}
 
 	// Отправка звука связанным блокам
-	private void SendSound(GridBlock sender)
+	private async Task SendSound(GridBlock sender)
 	{
-		sender.PlaySound();
-		
 		foreach (Tuple<GridBlock, Line2D, string> connection in blockConnections[sender])
 		{
 			if (connection.Item3 == "to")
@@ -82,9 +89,10 @@ public partial class Main : Node2D
 	private async Task SendSoundToLines(GridBlock recipient, float distance)
 	{
 		float time = distance * speed;
-		GD.Print(time);
 		await ToSignal(GetTree().CreateTimer(time), SceneTreeTimer.SignalName.Timeout);
-		recipient.EmitSignal(GridBlock.SignalName.LeftClick, recipient);
+		recipient.PlaySound();
+		_ = SendSound(recipient);
+		//recipient.EmitSignal(GridBlock.SignalName.LeftClick, recipient);
 	}
 
 
@@ -114,7 +122,6 @@ public partial class Main : Node2D
 	// Когда блок перестают перетаскивать, приклеиваем его к одной из ближайших клеток
 	private void GridBlockStopDragging(GridBlock sender)
 	{
-		GD.Print("Остановился, координаты: ", sender.Position.X, " ", sender.Position.Y);
 		Grid grid = (Grid)GetNode<Node2D>("Grid");
 		// Расстояние от координат центра блока до края сетки
 		Vector2 distances = new Vector2(sender.Position.X + sender.Size.X/2, sender.Position.Y + sender.Size.X/2);
@@ -267,15 +274,7 @@ public partial class Main : Node2D
 					GridBlock toBlock = GetBlockUnderPosition(grid.GetLocalMousePosition());
 
 					// Если линию отпустили на пустом месте, то удаляем ее
-					if (toBlock == null)
-					{
-						GD.Print("toBlock == null");
-					}
-					if (toBlock == lineSenderBlock)
-					{
-						GD.Print("toBlock == lineSenderBlock");
-					}
-					if (toBlock == null || toBlock == lineSenderBlock)
+					if (toBlock == null || toBlock == lineSenderBlock || toBlock is StartBlock)
 					{
 						GD.Print("isLineConnecting линия удаляется");
 						lineSenderBlock = null;

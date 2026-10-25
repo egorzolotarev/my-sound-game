@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://dnrw5jv2rjt0n"]
+
+[ext_resource type="PackedScene" uid="uid://cvhh27ud41efd" path="res://block/grid_block/grid_block.tscn" id="1_jhpk0"]
+[ext_resource type="Texture2D" uid="uid://r633204tcrdk" path="res://block/start_block/play-play-button_128x128.svg" id="2_3em4x"]
+[ext_resource type="Script" uid="uid://cwk5ura0wiwdw" path="res://block/start_block/StartBlock.cs" id="2_iqw5p"]
+
+[node name="StartBlock" unique_id=1546513206 instance=ExtResource("1_jhpk0")]
+texture = ExtResource("2_3em4x")
+script = ExtResource("2_iqw5p")

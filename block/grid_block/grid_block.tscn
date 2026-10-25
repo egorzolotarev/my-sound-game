@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://0ltvva7o1kig" path="res://block/grid_block/GridBlock.cs" id="2_x5hfr"]
 [ext_resource type="AudioStream" uid="uid://dy672jlsg0wpt" path="res://sounds/bang-mouth.wav" id="4_hhugy"]
 
-[node name="IBlock" unique_id=1546513206 instance=ExtResource("1_3ewud")]
+[node name="GridBlock" unique_id=1546513206 instance=ExtResource("1_3ewud")]
 texture = ExtResource("2_hhugy")
 script = ExtResource("2_x5hfr")
 sound = ExtResource("4_hhugy")
