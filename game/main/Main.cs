@@ -3,6 +3,9 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Xml.Serialization;
 using Godot;
+using System.Runtime.CompilerServices;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
 public partial class Main : Node2D
 {
 	[Export]
@@ -13,14 +16,14 @@ public partial class Main : Node2D
 	private GridBlock lineSenderBlock;
 	private Line2D connectionLine;
 	// Структура данных для хранения связанных блоков и прикрепленных к ним линий
-	private Dictionary<GridBlock, List<Tuple<GridBlock, Line2D, string>>> blockConnections;
+	private Dictionary<GridBlock, List<(GridBlock, Line2D, string)>> blockConnections;
 
 	// Начальные координаты перетаскиваемого блока, если место на которое его переносят уже занято
 	private Vector2 blockStartPosition;
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready()
 	{
-		blockConnections = new Dictionary<GridBlock, List<Tuple<GridBlock, Line2D, string>>>();
+		blockConnections = new Dictionary<GridBlock, List<(GridBlock, Line2D, string)>>();
 
 		StartBlock start = (StartBlock)(ResourceLoader.Load<PackedScene>("res://block//start_block//start_block.tscn").Instantiate());
 		start.Position = new Vector2(517, 350);
@@ -75,12 +78,11 @@ public partial class Main : Node2D
 	// Отправка звука связанным блокам
 	private async Task SendSound(GridBlock sender)
 	{
-		foreach (Tuple<GridBlock, Line2D, string> connection in blockConnections[sender])
+		foreach (var (block, line, text) in blockConnections[sender])
 		{
-			if (connection.Item3 == "to")
+			if (text == "to")
 			{
-				Line2D line = connection.Item2;
-				_ = SendSoundToLines(connection.Item1, line.Points[0].DistanceTo(line.Points[1]));
+				_ = SendSoundToLines(block, line.Points[0].DistanceTo(line.Points[1]));
 			}
 		}
 	}
@@ -105,10 +107,10 @@ public partial class Main : Node2D
 	// Когда блок перетаскивается, линия должна следовать за ним
  	private void GridBlockDragging(GridBlock sender)
 	{
-		foreach (Tuple<GridBlock, Line2D, string> node in blockConnections[sender])
+		GD.Print("Вызвалась GridBlockDragging");
+		foreach (var (_, line, text) in blockConnections[sender])
 		{
-			var (_, line, str) = node;
-			if (str == "to")
+			if (text == "to")
 			{
 				line.SetPointPosition(0, line.ToLocal(sender.GlobalPosition + sender.Size / 2));
 			}
@@ -249,6 +251,75 @@ public partial class Main : Node2D
 		return null;
 	}
 
+	private bool DFS(GridBlock current, Dictionary<GridBlock, string> colours)
+	{
+		colours[current] = "gray";
+		foreach (var (toBlock, _, text) in blockConnections[current])
+		{
+			if (text == "to")
+			{
+				if (colours[toBlock] == "gray")
+				{
+					return true;
+				}
+				if (colours[toBlock] == "white")
+				{
+					if (DFS(toBlock, colours))
+					{
+						return true;
+					}
+				}
+			}
+		}
+		colours[current] = "black";
+		return false;
+	}
+
+	private bool IsCycleInConnections()
+	{
+		Dictionary<GridBlock, string> colours = new Dictionary<GridBlock, string>();
+		foreach (GridBlock block in blockConnections.Keys)
+		{
+			colours[block] = "white";
+		}
+
+		foreach (GridBlock block in colours.Keys)
+		{
+			if (colours[block] == "white")
+			{
+				if (DFS(block, colours))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private void DeleteLine(Line2D deletingLine)
+	{
+		List<GridBlock> blocksToRemove = new List<GridBlock>();
+
+		foreach (GridBlock block in blockConnections.Keys)
+		{
+			blockConnections[block].RemoveAll(node => node.Item2 == deletingLine);
+			if (blockConnections[block].Count == 0)
+			{
+				blocksToRemove.Add(block);
+			}
+		}
+
+		foreach (GridBlock block in blocksToRemove)
+		{
+			blockConnections.Remove(block);
+		}
+
+		if (IsInstanceValid(deletingLine))
+		{
+			deletingLine.QueueFree();
+		}
+	}
+
 	public override void _Input(InputEvent @event)
     {
 		if (@event is InputEventMouseMotion inputEventMouseMotion)
@@ -287,19 +358,27 @@ public partial class Main : Node2D
 					else
 					{
 						GD.Print("isLineConnecting линия создается");
-						connectionLine.SetPointPosition(1, connectionLine.ToLocal(toBlock.GlobalPosition + toBlock.Size/2));
 
 						if (!blockConnections.ContainsKey(lineSenderBlock))
 						{
-							blockConnections[lineSenderBlock] = new List<Tuple<GridBlock, Line2D, string>>();
+							blockConnections[lineSenderBlock] = new List<(GridBlock, Line2D, string)>();
 						}
-						blockConnections[lineSenderBlock].Add(new Tuple<GridBlock, Line2D, string>(toBlock, connectionLine, "to"));
+						blockConnections[lineSenderBlock].Add((toBlock, connectionLine, "to"));
 
 						if (!blockConnections.ContainsKey(toBlock))
 						{
-							blockConnections[toBlock] = new List<Tuple<GridBlock, Line2D, string>>();
+							blockConnections[toBlock] = new List<(GridBlock, Line2D, string)>();
 						}
-						blockConnections[toBlock].Add(new Tuple<GridBlock, Line2D, string>(lineSenderBlock, connectionLine, "from"));
+						blockConnections[toBlock].Add((lineSenderBlock, connectionLine, "from"));
+
+						if (IsCycleInConnections())
+						{
+							GD.Print("Есть цикл");
+							DeleteLine(connectionLine);
+						} else
+						{
+							connectionLine.SetPointPosition(1, connectionLine.ToLocal(toBlock.GlobalPosition + toBlock.Size/2));
+						}
 
 						lineSenderBlock = null;
 						connectionLine = null;
